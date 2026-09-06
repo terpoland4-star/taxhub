@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Seal, Wordmark } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { HAMADINE_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export const Route = createFileRoute("/login")({ component: Login });
@@ -71,7 +71,7 @@ function Login() {
           {authEnabled ? (
             <>
               <div className="mt-6 flex flex-col gap-2">
-                {GROK_PROVIDERS.map((p) => (
+                {HAMADINE_PROVIDERS.map((p) => (
                   <Button
                     key={p.providerId}
                     type="button"
