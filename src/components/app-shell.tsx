@@ -2,8 +2,11 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   Building2,
   CalendarDays,
+  BookOpenCheck,
   FileSpreadsheet,
+  HandCoins,
   Landmark,
+  Leaf,
   LayoutDashboard,
   Menu,
   PenLine,
@@ -15,10 +18,11 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { cn } from "@/lib/cn";
+import { readSobre } from "@/lib/sobriete";
 import { useWorkspace } from "@/lib/use-workspace";
 import { Seal, Wordmark } from "./brand";
 import { DisclaimerBanner } from "./disclaimer";
@@ -30,6 +34,9 @@ const NAV = [
   { to: "/app/paiements", label: "Paiements", icon: Wallet },
   { to: "/app/calendrier", label: "Calendrier", icon: CalendarDays },
   { to: "/app/export", label: "Export", icon: FileSpreadsheet },
+  { to: "/app/fonap", label: "FONAP & DIGI-PME", icon: HandCoins },
+  { to: "/app/sobriete", label: "Zéro papier", icon: Leaf },
+  { to: "/app/veille", label: "Veille LF 2026", icon: BookOpenCheck },
   { to: "/app/entreprise", label: "Entreprise", icon: Building2 },
   { to: "/app/cabinet", label: "Cabinet", icon: Users },
   { to: "/app/taux", label: "Taux fiscaux", icon: Landmark },
@@ -44,6 +51,10 @@ export function AppShell() {
   const [open, setOpen] = useState(false);
   const cabinet = ws.data?.cabinets[0];
   const accent = cabinet?.accent_color;
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-sobre", readSobre());
+  }, []);
 
   return (
     <div

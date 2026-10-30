@@ -4,7 +4,12 @@ import { getSql } from "@/lib/db";
 import { upcomingDeadlines } from "@/lib/fiscal/calendar";
 import { computeDeclaration, ratesFromRows } from "@/lib/fiscal/engine";
 import { DEFAULT_RATES, type Activity, type LegalForm, type Regime, type TaxType } from "@/lib/fiscal/types";
+import { SECEF_MODES, type SecefMode } from "@/lib/fonap";
 import { nid, num, paymentRef } from "./ids";
+
+function secefMode(v: string | undefined): SecefMode {
+  return SECEF_MODES.includes(v as SecefMode) ? (v as SecefMode) : "aucun";
+}
 
 type ProfileRow = {
   user_id: string;
@@ -27,6 +32,8 @@ type CompanyRow = {
   phone: string;
   email: string;
   year_created: number | null;
+  rccm: string;
+  secef_mode: string;
 };
 
 type CabinetRow = {
@@ -175,7 +182,8 @@ export const getWorkspace = createServerFn({ method: "GET" })
 
     const companies = await sql<CompanyRow>`
       select distinct c.id, c.owner_user_id, c.cabinet_id, c.name, c.nif, c.legal_form,
-             c.activity, c.regime, c.city, c.phone, c.email, c.year_created
+             c.activity, c.regime, c.city, c.phone, c.email, c.year_created,
+             c.rccm, c.secef_mode
       from companies c
       left join company_members m on m.company_id = c.id
       left join cabinets cab on cab.id = c.cabinet_id
@@ -306,6 +314,8 @@ export const upsertCompany = createServerFn({ method: "POST" })
       phone: string;
       email: string;
       yearCreated: number | null;
+      rccm?: string;
+      secefMode?: SecefMode;
     }) => d,
   )
   .handler(async ({ context, data }) => {
@@ -323,7 +333,9 @@ export const upsertCompany = createServerFn({ method: "POST" })
           city = ${data.city.trim() || "Niamey"},
           phone = ${data.phone.trim()},
           email = ${data.email.trim()},
-          year_created = ${data.yearCreated}
+          year_created = ${data.yearCreated},
+          rccm = ${(data.rccm ?? "").trim()},
+          secef_mode = ${secefMode(data.secefMode)}
         where id = ${data.id}
       `;
       return { id: data.id };
@@ -332,11 +344,12 @@ export const upsertCompany = createServerFn({ method: "POST" })
     const profile = await sql<ProfileRow>`select * from profiles where user_id = ${context.userId}`;
     const cabinet = await sql<CabinetRow>`select * from cabinets where owner_user_id = ${context.userId} limit 1`;
     await sql`
-      insert into companies (id, owner_user_id, cabinet_id, name, nif, legal_form, activity, regime, city, phone, email, year_created)
+      insert into companies (id, owner_user_id, cabinet_id, name, nif, legal_form, activity, regime, city, phone, email, year_created, rccm, secef_mode)
       values (
         ${id}, ${context.userId}, ${cabinet[0]?.id ?? null}, ${data.name.trim() || "Entreprise"},
         ${data.nif.trim()}, ${data.legalForm}, ${data.activity}, ${data.regime},
-        ${data.city.trim() || "Niamey"}, ${data.phone.trim()}, ${data.email.trim()}, ${data.yearCreated}
+        ${data.city.trim() || "Niamey"}, ${data.phone.trim()}, ${data.email.trim()}, ${data.yearCreated},
+        ${(data.rccm ?? "").trim()}, ${secefMode(data.secefMode)}
       )
     `;
     await sql`insert into company_members (company_id, user_id, role) values (${id}, ${context.userId}, 'admin')`;
@@ -630,7 +643,8 @@ export const seedDemo = createServerFn({ method: "POST" })
       }
     }
     await sql`
-      update companies set name = 'Sahel Négoce', nif = 'N000123456P', city = 'Niamey', activity = 'commerce', regime = 'synthetique'
+      update companies set name = 'Sahel Négoce', nif = 'N000123456P', city = 'Niamey', activity = 'commerce', regime = 'synthetique',
+        rccm = 'NE-NIM-2021-A-1234', secef_mode = 'e_secef'
       where id = ${companyId}
     `;
     return { ok: true };

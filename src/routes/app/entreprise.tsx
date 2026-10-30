@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/select";
 import { ACTIVITY_LABELS, LEGAL_FORM_LABELS, REGIME_LABELS } from "@/lib/fiscal/format";
 import type { Activity, LegalForm, Regime } from "@/lib/fiscal/types";
 import { recommendRegime } from "@/lib/fiscal/engine";
+import { SECEF_LABELS, type SecefMode } from "@/lib/fonap";
 import { upsertCompany } from "@/lib/server/workspace";
 import { isUnauthorized, useRefreshWorkspace, useWorkspace } from "@/lib/use-workspace";
 import { RedirectToSignIn } from "@/lib/auth/gates";
@@ -26,6 +27,8 @@ function CompanyPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [rccm, setRccm] = useState("");
+  const [secefMode, setSecefMode] = useState<SecefMode>("aucun");
 
   useEffect(() => {
     if (!c) return;
@@ -38,6 +41,8 @@ function CompanyPage() {
     setPhone(c.phone);
     setEmail(c.email);
     setYear(String(c.year_created ?? new Date().getFullYear()));
+    setRccm(c.rccm ?? "");
+    setSecefMode((c.secef_mode as SecefMode) ?? "aucun");
   }, [c]);
 
   if (ws.isError && isUnauthorized(ws.error)) return <RedirectToSignIn />;
@@ -67,6 +72,8 @@ function CompanyPage() {
                 phone,
                 email,
                 yearCreated: Number(year) || null,
+                rccm,
+                secefMode,
               },
             });
             await refresh();
@@ -81,6 +88,18 @@ function CompanyPage() {
         </Field>
         <Field label="NIF">
           <Input value={nif} onChange={(e) => setNif(e.target.value)} placeholder="N000…" />
+        </Field>
+        <Field label="RCCM" hint="Exigé avec le NIF par les appels du FONAP">
+          <Input value={rccm} onChange={(e) => setRccm(e.target.value)} placeholder="NE-NIM-…" />
+        </Field>
+        <Field label="Factures certifiées">
+          <Select value={secefMode} onChange={(e) => setSecefMode(e.target.value as SecefMode)}>
+            {Object.entries(SECEF_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </Select>
         </Field>
         <Field label="Forme juridique">
           <Select value={legalForm} onChange={(e) => setLegalForm(e.target.value as LegalForm)}>

@@ -77,3 +77,34 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Mode sobre: dark surfaces cost less power on the OLED screens most phones in
+   Niger use, and no motion keeps the CPU idle during load-shedding. */
+:root[data-sobre] {
+  --color-bg: #121410;
+  --color-fg: #e8e4da;
+  --color-muted: #a7aa9f;
+  --color-subtle: #7d8076;
+  --color-surface: #1a1d17;
+  --color-surface-2: #252920;
+  --color-border: #343a2e;
+  --color-accent: #5fb98a;
+  --color-accent-fg: #0f1a13;
+  --color-accent-soft: #1d3327;
+  --color-danger: #e08b84;
+  --color-danger-soft: #3a1f1d;
+  --color-warn: #e0b56a;
+  --color-warn-soft: #382b16;
+  --color-ok: #5fb98a;
+  --color-ok-soft: #1d3327;
+  --color-ink: #000;
+  color-scheme: dark;
+}
+
+:root[data-sobre] *,
+:root[data-sobre] *::before,
+:root[data-sobre] *::after {
+  animation: none !important;
+  transition: none !important;
+  backdrop-filter: none !important;
+}

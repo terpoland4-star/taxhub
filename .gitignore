@@ -3,3 +3,7 @@ node_modules/
 *.sqlite
 .env.local
 dist/
+.output/
+.vercel/
+.tanstack/
+src/routeTree.gen.ts

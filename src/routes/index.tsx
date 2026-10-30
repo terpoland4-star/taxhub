@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Building2, Lock, Smartphone, Table2 } from "lucide-react";
+import { ArrowRight, BookOpenCheck, Building2, HandCoins, Leaf, Lock, Smartphone, Table2 } from "lucide-react";
 import { Seal, Wordmark } from "@/components/brand";
 import { DisclaimerBanner } from "@/components/disclaimer";
 import { SimWidget } from "@/components/sim-widget";
 import { Button } from "@/components/ui/button";
+import { formatDue, upcomingDeadlines } from "@/lib/fiscal/calendar";
 import { SignedIn, SignedOut } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/")({ component: Home });
 
 function Home() {
   const { isPending } = useCurrentUserState();
+  const next = upcomingDeadlines("reel_normal")[0];
   return (
     <div className="min-h-screen bg-bg">
       <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
@@ -71,8 +73,12 @@ function Home() {
           </div>
           <div className="rounded-xl bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6">
             <p className="text-sm font-medium">Échéance la plus proche</p>
-            <p className="mt-1 font-display text-3xl tracking-tight">15 septembre 2026</p>
-            <p className="mt-1 text-sm text-muted">TVA du mois d’août · régime réel</p>
+            <p className="mt-1 font-display text-3xl tracking-tight">
+              {next ? formatDue(next.dueDate) : "—"}
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              {next ? `${next.label} · ${next.periodLabel}` : "Régime réel"}
+            </p>
             <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-lg bg-surface-2 p-3">
                 <dt className="text-muted">TVA normale</dt>
@@ -116,6 +122,40 @@ function Home() {
               <div key={item.title}>
                 <item.icon className="size-5 text-accent" />
                 <h2 className="mt-3 font-medium">{item.title}</h2>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-4 pt-16 sm:px-6">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
+            Pour la Direction Générale des Impôts
+          </p>
+          <h2 className="mt-2 max-w-2xl font-display text-3xl font-medium tracking-tight">
+            Plus de contribuables à jour, moins de papier, moins de déplacements.
+          </h2>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {[
+              {
+                icon: HandCoins,
+                title: "La conformité ouvre le financement",
+                body: "Le NIF, le RCCM et des déclarations à jour forment le dossier FONAP et DIGI-PME. Se déclarer devient un avantage visible, pas une contrainte.",
+              },
+              {
+                icon: Leaf,
+                title: "Zéro papier, sobre en énergie",
+                body: "Déclaration, paiement mobile et reçu numériques. Pages légères, mode sombre économe pour les téléphones pendant les délestages.",
+              },
+              {
+                icon: BookOpenCheck,
+                title: "Aligné sur les textes 2026",
+                body: "Nouveau CGI (ord. 2025-22), loi de finances 2026 (ord. 2025-44), facture certifiée SECeF. Chaque taux affiche sa source et son statut.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="rounded-xl bg-surface p-5 shadow-[var(--shadow-border)]">
+                <item.icon className="size-5 text-accent" />
+                <h3 className="mt-3 font-medium">{item.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{item.body}</p>
               </div>
             ))}
