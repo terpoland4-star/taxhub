@@ -35,15 +35,19 @@ function Login() {
           callbackURL: "/app",
         });
         if (res.error) throw new Error(res.error.message || "Inscription impossible");
-      } else {
-        const res = await authClient.signIn.email({
-          email,
-          password,
-          callbackURL: "/app",
-        });
-        if (res.error) throw new Error(res.error.message || "Connexion impossible");
+        // Email verification required — no session yet, don't navigate.
+        toast.success("Compte créé — vérifiez votre boîte mail pour l'activer.");
+        setMode("in");
+        setPassword("");
+        return;
       }
-      toast.success(mode === "up" ? "Compte créé" : "Connexion réussie");
+      const res = await authClient.signIn.email({
+        email,
+        password,
+        callbackURL: "/app",
+      });
+      if (res.error) throw new Error(res.error.message || "Connexion impossible");
+      toast.success("Connexion réussie");
       await navigate({ to: "/app" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur d’authentification");

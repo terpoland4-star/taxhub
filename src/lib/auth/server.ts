@@ -30,11 +30,12 @@
  * a verified id via `@/lib/auth/middleware`.
  */
 import { betterAuth } from "better-auth";
-import { bearer, genericOAuth } from "better-auth/plugins";
+import { bearer, genericOAuth, twoFactor } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { getCookie } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
+import { Resend } from "resend";
 import { ensureDbReady, getPglite } from "../db";
 import { emailAndPasswordEnabled } from "./email-password";
 import { GATE_PROVIDER_ID, gateIdentitySessions } from "./gate-session.server";
@@ -57,11 +58,11 @@ void ensureDbReady();
  * restart clears both the secret and PGLite together.
  */
 const globalAuthRef = globalThis as typeof globalThis & {
-  __hamadineAuthPreviewSecret__?: string;
+  __authPreviewSecret__?: string;
 };
 function previewAuthSecret(): string {
-  globalAuthRef.__hamadineAuthPreviewSecret__ ??= randomBytes(32).toString("hex");
-  return globalAuthRef.__hamadineAuthPreviewSecret__;
+  globalAuthRef.__authPreviewSecret__ ??= randomBytes(32).toString("hex");
+  return globalAuthRef.__authPreviewSecret__;
 }
 
 /** Read an env var, treating empty/whitespace as unset. */
@@ -69,6 +70,13 @@ const env = (key: string): string | undefined => {
   const value = process.env[key]?.trim();
   return value ? value : undefined;
 };
+
+// Resend client for transactional email (verification links). Optional at
+// import time so a build without RESEND_API_KEY (e.g. auth off locally)
+// doesn't crash — sendVerificationEmail below just logs instead of sending.
+const resendApiKey = env("RESEND_API_KEY");
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const emailFrom = env("EMAIL_FROM") ?? "onboarding@resend.dev";
 
 // Explicit off-switch. The deployer sets `VITE_AUTH_ENABLED=true` when it
 // provisions auth; set it to "false" to force auth off everywhere (dev user).
@@ -208,10 +216,57 @@ export const auth = betterAuth({
   // (incl. the client's `/get-session`) skip the DB — this shrinks the "loading"
   // window and reduces auth flicker. See the `auth` skill for the full
   // flicker-prevention guidance (gate on `isPending`; SSR the session).
-  session: { cookieCache: { enabled: true, maxAge: 300 } },
+  session: {
+    expiresIn: 60 * 60 * 24, // 24h — plus court que le défaut better-auth (7j)
+    updateAge: 60 * 60 * 2, // renouvelle la session si activité toutes les 2h
+    cookieCache: { enabled: true, maxAge: 300 },
+  },
 
   // Local email/password — toggled only via `./email-password` (not a plugin).
-  ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
+  // `requireEmailVerification` blocks sign-in until the link below is
+  // clicked. This closes a pre-account-hijacking gap: without it, someone
+  // could register a victim's email locally and inherit a later Google
+  // sign-in via account linking before ever proving they own the address.
+  ...(emailAndPasswordEnabled
+    ? { emailAndPassword: { enabled: true, requireEmailVerification: true } }
+    : {}),
+
+  // Verification email sender. `sendOnSignUp` is left undefined so it
+  // follows `requireEmailVerification` (sends automatically on sign-up).
+  // `sendOnSignIn` re-sends a fresh link if an unverified user tries again.
+  emailVerification: {
+    sendOnSignIn: true,
+    async sendVerificationEmail({ user, url }) {
+      if (!resend) {
+        console.error(
+          "[auth] RESEND_API_KEY manquant — impossible d'envoyer l'e-mail de vérification à",
+          user.email,
+        );
+        return;
+      }
+      const { error } = await resend.emails.send({
+        from: emailFrom,
+        to: user.email,
+        subject: "Vérifiez votre adresse e-mail — TaxHub Niger",
+        html: `
+          <p>Bonjour,</p>
+          <p>Cliquez sur le lien ci-dessous pour vérifier votre adresse e-mail et activer votre compte TaxHub Niger :</p>
+          <p><a href="${url}">${url}</a></p>
+          <p>Ce lien expire dans 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.</p>
+        `,
+      });
+      // The Resend SDK resolves with { error } on failure instead of
+      // throwing (e.g. unverified domain, recipient outside the allowed
+      // onboarding@resend.dev test address) — surface it loudly, or a
+      // rejected send fails completely silently.
+      if (error) {
+        console.error(
+          `[auth] Échec d'envoi de l'e-mail de vérification à ${user.email}:`,
+          error,
+        );
+      }
+    },
+  },
 
   // `__Host-` prefixed cookies: the browser REFUSES any same-named cookie that
   // carries a `Domain` attribute, so a sibling `*.hamadine.me` app cannot "toss" a
@@ -233,6 +288,11 @@ export const auth = betterAuth({
 
   plugins: [
     gateIdentitySessions(),
+
+    // TOTP-based two-factor auth. `issuer` names this app in the user's
+    // authenticator (Google Authenticator, Authy, ...) so multiple
+    // Hamadine-hosted apps don't show up as indistinguishable entries.
+    twoFactor({ issuer: "NigerTax Pro" }),
 
     // One genericOAuth provider per upstream (when auth is on), all federating
     // to the broker with the SAME client and differing only by the `idp` hint.

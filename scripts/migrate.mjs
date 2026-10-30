@@ -17,6 +17,12 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import pg from "pg";
 import { pendingMigrations } from "./migration-plan.mjs";
+import { loadEnvFile } from "./load-env.mjs";
+
+// Load .env directly so this script works whether it's run by PM2 (which
+// sources .env itself), by a fresh SSH session that never sourced it, or by
+// a future CI runner — no shell-dependent `set -a; source .env` required.
+loadEnvFile(join(dirname(fileURLToPath(import.meta.url)), "..", ".env"));
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {

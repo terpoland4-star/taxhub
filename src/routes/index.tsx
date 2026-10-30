@@ -164,6 +164,30 @@ function Home() {
           <Wordmark />
           <p>Prototype A–Y · validation juridique non effectuée.</p>
         </div>
+        <div className="mx-auto mt-4 flex max-w-6xl flex-col gap-1 text-xs sm:flex-row sm:items-center sm:gap-3">
+          <span>
+            Powered by{" "}
+            <a
+              href="https://www.hamadine-services.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Hamadine
+            </a>
+          </span>
+          <span className="hidden sm:inline">·</span>
+          <span>AG MOCTAR — CEO de HAM Global-Words</span>
+          <span className="hidden sm:inline">·</span>
+          <a
+            href="https://wa.me/22777641800"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            WhatsApp
+          </a>
+        </div>
       </footer>
     </div>
   );

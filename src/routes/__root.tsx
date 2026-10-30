@@ -22,10 +22,10 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#1F6B4A" },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", href: "/icon-32.png" },
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/__hamadine/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/__hamadine/icon-180.png" },
+      { rel: "manifest", href: "/__app/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icon-180.png" },
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap",

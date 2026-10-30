@@ -13,26 +13,21 @@ export function Wordmark({ className }: { className?: string }) {
 
 export function Seal({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 40 40"
-      className={cn("text-accent", className)}
-      aria-hidden="true"
-    >
-      <rect x="3" y="3" width="34" height="34" rx="9" fill="currentColor" />
-      <path
-        d="M12 22.5c0-5 3.6-8.5 8-8.5s8 3.5 8 8.5"
-        fill="none"
-        stroke="var(--color-accent-fg)"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <circle cx="20" cy="16.5" r="1.6" fill="var(--color-accent-fg)" />
-      <path
-        d="M14 25.5h12"
-        stroke="var(--color-accent-fg)"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
+    <img
+      src="/icon-180.png"
+      alt="NigerTax Pro"
+      className={cn("object-contain", className)}
+    />
+  );
+}
+
+/** Full logo (crest + wordmark) as a single image — for headers, login, etc. */
+export function LogoFull({ className }: { className?: string }) {
+  return (
+    <img
+      src="/logo-header-320.png"
+      alt="NigerTax Pro — La nouvelle signature de la clarté fiscale nigérienne"
+      className={cn("object-contain", className)}
+    />
   );
 }

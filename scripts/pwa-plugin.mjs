@@ -1,8 +1,8 @@
 /**
  * Dev/preview (Vite) half of the platform PWA chrome: serves the ?install=1
  * tutorial and the per-app manifest, and injects missing PWA head tags into
- * app documents. The deployed-app half lives in server/middleware/hamadine-pwa.ts;
- * both share scripts/hamadine-pwa-shared.mjs.
+ * app documents. The deployed-app half lives in server/middleware/pwa.ts;
+ * both share scripts/pwa-shared.mjs.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -10,15 +10,15 @@ import { fileURLToPath } from "node:url";
 import {
   acceptsHtml,
   createHeadInjector,
-  injectHamadinePwaHead,
+  injectPwaHead,
   isDocumentPath,
   isInstallQuery,
   renderInstallPageHtml,
   renderWebManifest,
   snapshotOgIdentity,
-} from "./hamadine-pwa-shared.mjs";
+} from "./pwa-shared.mjs";
 
-export const HAMADINE_OG_IDENTITY_ID = "virtual:hamadine-og-identity";
+export const OG_IDENTITY_ID = "virtual:og-identity";
 
 const INSTALL_PAGE_PATH = join(dirname(fileURLToPath(import.meta.url)), "install-page.html");
 
@@ -42,7 +42,7 @@ function sendHtml(res, html) {
   res.end(body);
 }
 
-function serveHamadinePwa(middlewares) {
+function servePwa(middlewares) {
   middlewares.use((req, res, next) => {
     const rawUrl = req.url ?? "";
     const pathOnly = rawUrl.split("?", 1)[0] ?? "";
@@ -52,7 +52,7 @@ function serveHamadinePwa(middlewares) {
       return;
     }
 
-    if (pathOnly === "/__hamadine/manifest.webmanifest" || pathOnly === "/__hamadine/manifest.json") {
+    if (pathOnly === "/__app/manifest.webmanifest" || pathOnly === "/__app/manifest.json") {
       const body = Buffer.from(renderWebManifest(requestHost(req)), "utf8");
       res.statusCode = 200;
       res.setHeader("content-type", "application/manifest+json; charset=utf-8");
@@ -151,22 +151,22 @@ function wrapHtmlResponses(middlewares, cwd) {
   });
 }
 
-export function hamadinePwaPlugin() {
+export function pwaPlugin() {
   let root = process.cwd();
   return {
-    name: "app-builder:hamadine-pwa",
+    name: "app-builder:pwa",
     configResolved(config) {
       root = config.root;
     },
     resolveId(id) {
-      if (id === HAMADINE_OG_IDENTITY_ID) return `\0${HAMADINE_OG_IDENTITY_ID}`;
+      if (id === OG_IDENTITY_ID) return `\0${OG_IDENTITY_ID}`;
     },
     load(id) {
-      if (id !== `\0${HAMADINE_OG_IDENTITY_ID}`) return;
-      return `export const hamadineOgIdentity = ${JSON.stringify(snapshotOgIdentity(root))};`;
+      if (id !== `\0${OG_IDENTITY_ID}`) return;
+      return `export const ogIdentity = ${JSON.stringify(snapshotOgIdentity(root))};`;
     },
     transformIndexHtml(html) {
-      return injectHamadinePwaHead(html, {
+      return injectPwaHead(html, {
         host: process.env.VITE_PUBLIC_HOSTNAME ?? "",
         cwd: root,
       });
@@ -174,11 +174,11 @@ export function hamadinePwaPlugin() {
     configureServer(server) {
       // Registered directly (not in a returned post-hook) so both run BEFORE
       // TanStack Start's SSR middleware, like the auth-popup plugin.
-      serveHamadinePwa(server.middlewares);
+      servePwa(server.middlewares);
       wrapHtmlResponses(server.middlewares, root);
     },
     configurePreviewServer(server) {
-      serveHamadinePwa(server.middlewares);
+      servePwa(server.middlewares);
       // Post-hook: preview registers compression between the direct hooks and
       // the post-hooks, and the injector must wrap AFTER compression so it
       // sees plaintext HTML (compression then compresses the injected output).

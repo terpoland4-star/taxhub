@@ -6,8 +6,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const DEFAULT_APP_NAME = "Hamadine App";
-export const OG_SERVICE_URL_DEFAULT = "https://og.hamadine.me";
+export const DEFAULT_APP_NAME = "TaxHub Niger";
+export const OG_SERVICE_URL_DEFAULT = "https://og.hamadine-services.net";
 export const OG_SITE_REL_PATH = "src/lib/og/site.json";
 
 const SHARE_META_KEYS = new Set([
@@ -128,7 +128,7 @@ export function isInstallQuery(url) {
 export function isDocumentPath(pathname) {
   const path = String(pathname ?? "");
   return (
-    !path.startsWith("/__hamadine/") &&
+    !path.startsWith("/__app/") &&
     !path.startsWith("/api/") &&
     !path.startsWith("/@") &&
     !path.startsWith("/node_modules") &&
@@ -171,7 +171,7 @@ export function renderWebManifest(hostHeader) {
       theme_color: "#000000",
       icons: [
         {
-          src: "/__hamadine/icon-180.png",
+          src: "/icon-180.png",
           sizes: "180x180",
           type: "image/png",
         },
@@ -182,12 +182,12 @@ export function renderWebManifest(hostHeader) {
   );
 }
 
-export function hamadinePwaHeadTags(appName = DEFAULT_APP_NAME) {
+export function pwaHeadTags(appName = DEFAULT_APP_NAME) {
   return [
     // Standalone display comes from the manifest ("display": "standalone");
     // the legacy *-web-app-capable metas it replaces are deliberately absent.
-    ["manifest", '<link rel="manifest" href="/__hamadine/manifest.webmanifest">'],
-    ["apple-touch-icon", '<link rel="apple-touch-icon" href="/__hamadine/icon-180.png">'],
+    ["manifest", '<link rel="manifest" href="/__app/manifest.webmanifest">'],
+    ["apple-touch-icon", '<link rel="apple-touch-icon" href="/icon-180.png">'],
     [
       "apple-mobile-web-app-title",
       `<meta name="apple-mobile-web-app-title" content="${escapeHtml(appName)}">`,
@@ -200,9 +200,7 @@ export function hamadinePwaHeadTags(appName = DEFAULT_APP_NAME) {
   ];
 }
 
-export const HAMADINE_EXTENSIONS_SCRIPT_SRC = "https://hamadine.com/hamadine-app-builder/extensions.js";
-
-export function readHamadineProjectId() {
+export function readProjectId() {
   const fromProcess = typeof process !== "undefined" ? process.env?.VITE_PROJECT_ID : "";
   return String(fromProcess ?? "").trim();
 }
@@ -217,7 +215,7 @@ export function readXCreatorId() {
   return String(fromProcess ?? "").trim();
 }
 
-export function hamadineXCreatorHeadTags(creator = readXCreator(), creatorId = readXCreatorId()) {
+export function xCreatorHeadTags(creator = readXCreator(), creatorId = readXCreatorId()) {
   const name = String(creator ?? "").trim();
   const id = String(creatorId ?? "").trim();
   if (!name || !id) return [];
@@ -225,21 +223,6 @@ export function hamadineXCreatorHeadTags(creator = readXCreator(), creatorId = r
     `<meta property="x:creator" content="${escapeHtml(name)}">`,
     `<meta property="x:creator:id" content="${escapeHtml(id)}">`,
   ];
-}
-
-/** Platform "Created with Hamadine" banner — injected into every HTML document. */
-export function hamadineExtensionsHeadTags(projectId = readHamadineProjectId()) {
-  const id = escapeHtml(projectId);
-  const tags = [];
-  if (projectId) {
-    tags.push(`<meta name="hamadine-project-id" content="${id}">`);
-  }
-  tags.push(
-    `<script src="${HAMADINE_EXTENSIONS_SCRIPT_SRC}"${
-      projectId ? ` data-project-id="${id}"` : ""
-    } defer></script>`,
-  );
-  return tags;
 }
 
 export function readOgSite(cwd = process.cwd()) {
@@ -333,7 +316,7 @@ function applyCustomCardFromFs(site, cwd) {
   return { ...site, card: "custom", image: disk };
 }
 
-export function hamadineOgHeadTags({
+export function ogHeadTags({
   host = "",
   appName = DEFAULT_APP_NAME,
   site = {},
@@ -413,7 +396,7 @@ export function normalizeHeadContext(ctx = {}) {
   const appName = resolveOgTitle(site, ctx.appName ?? DEFAULT_APP_NAME, ctx.host ?? "");
   return {
     appName,
-    projectId: ctx.projectId ?? readHamadineProjectId(),
+    projectId: ctx.projectId ?? readProjectId(),
     creator: ctx.creator ?? readXCreator(),
     creatorId: ctx.creatorId ?? readXCreatorId(),
     host: ctx.host ?? "",
@@ -422,7 +405,7 @@ export function normalizeHeadContext(ctx = {}) {
   };
 }
 
-export function injectHamadinePwaHead(html, ctx = {}) {
+export function injectPwaHead(html, ctx = {}) {
   if (typeof html !== "string") return html;
   const { site, projectId, creator, creatorId, host, cwd } = normalizeHeadContext(ctx);
   const documentTitle = titleFromDocument(html);
@@ -434,32 +417,20 @@ export function injectHamadinePwaHead(html, ctx = {}) {
   );
   let next = stripShareMetaTags(html);
 
-  const missing = hamadinePwaHeadTags(appName)
+  const missing = pwaHeadTags(appName)
     .filter(([key]) => {
-      if (key === "manifest") return !next.includes('href="/__hamadine/manifest.webmanifest"');
-      if (key === "apple-touch-icon") return !next.includes('href="/__hamadine/icon-180.png"');
+      if (key === "manifest") return !next.includes('href="/__app/manifest.webmanifest"');
+      if (key === "apple-touch-icon") return !next.includes('href="/icon-180.png"');
       return !next.includes(`name="${key}"`);
     })
     .map(([, tag]) => tag);
 
   next = insertAfterHeadOpen(
     next,
-    hamadineOgHeadTags({ host, appName, site, documentTitle, cwd }).join(""),
+    ogHeadTags({ host, appName, site, documentTitle, cwd }).join(""),
   );
 
-  if (!next.includes("/hamadine-app-builder/extensions.js")) {
-    missing.push(...hamadineExtensionsHeadTags(projectId));
-  } else if (projectId && !next.includes('name="hamadine-project-id"')) {
-    missing.push(`<meta name="hamadine-project-id" content="${escapeHtml(projectId)}">`);
-  }
-  if (
-    projectId &&
-    !next.includes('property="hamadine:app_id"') &&
-    !next.includes("property='hamadine:app_id'")
-  ) {
-    missing.push(`<meta property="hamadine:app_id" content="${escapeHtml(projectId)}">`);
-  }
-  const creatorTags = hamadineXCreatorHeadTags(creator, creatorId);
+  const creatorTags = xCreatorHeadTags(creator, creatorId);
   if (creatorTags.length > 0) {
     const hasCreator =
       next.includes('property="x:creator" content=') ||
@@ -490,7 +461,7 @@ export function createHeadInjector(ctx = {}) {
   let done = false;
 
   const apply = (html) =>
-    injectHamadinePwaHead(html, {
+    injectPwaHead(html, {
       appName: normalized.appName,
       projectId: normalized.projectId,
       creator: normalized.creator,
