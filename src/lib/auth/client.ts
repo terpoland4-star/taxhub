@@ -1,6 +1,7 @@
 import { genericOAuthClient } from "better-auth/client/plugins";
+import { twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
-import { runPreSignInSignOut, runSignOut } from "../../../scripts/sign-out-plan.mjs";
+import { runPreSignInSignOut, runRevokeOtherSessions, runSignOut } from "../../../scripts/sign-out-plan.mjs";
 import { HAMADINE_PROVIDERS } from "./providers";
 
 /**
@@ -18,7 +19,7 @@ import { HAMADINE_PROVIDERS } from "./providers";
  * the visitor stays signed in.
  */
 export const authClient = createAuthClient({
-  plugins: [genericOAuthClient()],
+  plugins: [genericOAuthClient(), twoFactorClient()],
   fetchOptions: {
     onRequest(ctx) {
       const token = getBearerToken();
@@ -231,6 +232,26 @@ export async function signOut(redirectTo = "/"): Promise<void> {
     clearToken: () => setBearerToken(null),
     redirect: () => {
       window.location.href = redirectTo;
+    },
+  });
+}
+
+/**
+ * Revoke every OTHER active session for the current user, keeping this one
+ * signed in. Use for a "sign out of all other devices" control in account
+ * settings. Sequencing lives in `scripts/sign-out-plan.mjs` so it can be
+ * unit-tested alongside `signOut`.
+ *
+ * Resolves to the outcome instead of throwing — a failed or timed-out revoke
+ * does not touch the current session, so there is nothing to roll back or
+ * redirect on; the caller decides how to surface it (e.g. a toast to retry).
+ */
+export async function revokeOtherSessions(): Promise<"ok" | "failed" | "timeout"> {
+  return runRevokeOtherSessions({
+    livePreview: inLivePreview(),
+    requestRevoke: async () => {
+      const { error } = await authClient.revokeOtherSessions();
+      if (error) throw new Error(error.message ?? "Revoke failed");
     },
   });
 }

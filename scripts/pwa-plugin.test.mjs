@@ -7,8 +7,8 @@ import test from "node:test";
 import {
   appNameFromHost,
   createHeadInjector,
-  hamadineXCreatorHeadTags,
-  injectHamadinePwaHead,
+  xCreatorHeadTags,
+  injectPwaHead,
   isDocumentPath,
   isInstallQuery,
   publicAppHost,
@@ -16,13 +16,13 @@ import {
   resolveOgCardAsset,
   snapshotOgIdentity,
   stripInstallParams,
-} from "./hamadine-pwa-shared.mjs";
-import { renderInstallPage } from "./hamadine-pwa-plugin.mjs";
+} from "./pwa-shared.mjs";
+import { renderInstallPage } from "./pwa-plugin.mjs";
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 test("injects before </head>", () => {
-  const out = injectHamadinePwaHead("<html><head><title>x</title></head><body></body></html>");
+  const out = injectPwaHead("<html><head><title>x</title></head><body></body></html>");
   assert.match(out, /rel="manifest"/);
   assert.match(out, /apple-touch-icon/);
   assert.match(out, /hamadine-app-builder\/extensions\.js/);
@@ -30,7 +30,7 @@ test("injects before </head>", () => {
 });
 
 test("injects the extensions script without a project id", () => {
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  const out = injectPwaHead("<html><head></head></html>", {
     appName: "Demo",
     projectId: "",
   });
@@ -41,7 +41,7 @@ test("injects the extensions script without a project id", () => {
 });
 
 test("injects project id on the script and meta when provided", () => {
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  const out = injectPwaHead("<html><head></head></html>", {
     appName: "Demo",
     projectId: "proj-123",
   });
@@ -52,16 +52,16 @@ test("injects project id on the script and meta when provided", () => {
 
 test("does not duplicate hamadine:app_id", () => {
   const ctx = { appName: "Demo", projectId: "proj-123" };
-  const once = injectHamadinePwaHead("<html><head></head></html>", ctx);
-  const twice = injectHamadinePwaHead(once, ctx);
+  const once = injectPwaHead("<html><head></head></html>", ctx);
+  const twice = injectPwaHead(once, ctx);
   assert.equal(once, twice);
   assert.equal(twice.split('property="hamadine:app_id"').length - 1, 1);
 });
 
 test("omits x:creator tags without both creator values", () => {
-  assert.deepEqual(hamadineXCreatorHeadTags("", "42"), []);
-  assert.deepEqual(hamadineXCreatorHeadTags("@alice", ""), []);
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  assert.deepEqual(xCreatorHeadTags("", "42"), []);
+  assert.deepEqual(xCreatorHeadTags("@alice", ""), []);
+  const out = injectPwaHead("<html><head></head></html>", {
     appName: "Demo",
     projectId: "",
     creator: "@alice",
@@ -71,7 +71,7 @@ test("omits x:creator tags without both creator values", () => {
 });
 
 test("injects x:creator tags when both creator values are set", () => {
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  const out = injectPwaHead("<html><head></head></html>", {
     appName: "Demo",
     projectId: "",
     creator: "@alice",
@@ -82,7 +82,7 @@ test("injects x:creator tags when both creator values are set", () => {
 });
 
 test("escapes x:creator values", () => {
-  const tags = hamadineXCreatorHeadTags('"><script>', '1" onclick="alert(1)');
+  const tags = xCreatorHeadTags('"><script>', '1" onclick="alert(1)');
   assert.equal(
     tags[0],
     '<meta property="x:creator" content="&quot;&gt;&lt;script&gt;">',
@@ -95,8 +95,8 @@ test("escapes x:creator values", () => {
 
 test("does not duplicate x:creator tags", () => {
   const ctx = { appName: "Demo", projectId: "", creator: "@alice", creatorId: "42" };
-  const once = injectHamadinePwaHead("<html><head></head></html>", ctx);
-  const twice = injectHamadinePwaHead(once, ctx);
+  const once = injectPwaHead("<html><head></head></html>", ctx);
+  const twice = injectPwaHead(once, ctx);
   assert.equal(once, twice);
   assert.equal(twice.split('property="x:creator" content=').length - 1, 1);
   assert.equal(twice.split('property="x:creator:id"').length - 1, 1);
@@ -105,7 +105,7 @@ test("does not duplicate x:creator tags", () => {
 test("platform chrome overwrites share-card metas and always sets og:title", () => {
   const html =
     '<html><head><title>Hello World</title><meta property="og:title" content="Old"><meta name="twitter:card" content="summary"></head></html>';
-  const out = injectHamadinePwaHead(html, { appName: "Wild Race" });
+  const out = injectPwaHead(html, { appName: "Wild Race" });
   assert.match(out, /name="twitter:card" content="summary_large_image"/);
   assert.match(out, /property="og:title" content="Hello World"/);
   assert.doesNotMatch(out, /content="Old"/);
@@ -116,15 +116,15 @@ test("platform chrome overwrites share-card metas and always sets og:title", () 
 });
 
 test("does not duplicate twitter:card or og:title", () => {
-  const once = injectHamadinePwaHead("<html><head><title>Hello World</title></head></html>");
-  const twice = injectHamadinePwaHead(once);
+  const once = injectPwaHead("<html><head><title>Hello World</title></head></html>");
+  const twice = injectPwaHead(once);
   assert.equal(once, twice);
   assert.equal(twice.split('name="twitter:card"').length - 1, 1);
   assert.equal(twice.split('property="og:title"').length - 1, 1);
 });
 
 test("a baked site.image is treated as a custom card", () => {
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  const out = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
     cwd: mkdtempSync(join(tmpdir(), "hamadine-og-image-only-")),
     site: { title: "Wild Race", image: "/og.jpg" },
@@ -135,7 +135,7 @@ test("a baked site.image is treated as a custom card", () => {
 
 test("baked identity does not need a workspace filesystem", () => {
   const empty = mkdtempSync(join(tmpdir(), "hamadine-og-empty-"));
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  const out = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
     cwd: empty,
     site: { title: "Pixel Nova", type: "x:game", card: "custom" },
@@ -152,7 +152,7 @@ test("a public card file wins over a baked site without card=custom", () => {
   const root = mkdtempSync(join(tmpdir(), "hamadine-og-card-"));
   mkdirSync(join(root, "public"));
   writeFileSync(join(root, "public/og.jpg"), "x");
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  const out = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
     cwd: root,
     site: {},
@@ -165,7 +165,7 @@ test("public/og.png wins when jpg is absent", () => {
   const root = mkdtempSync(join(tmpdir(), "hamadine-og-png-"));
   mkdirSync(join(root, "public"));
   writeFileSync(join(root, "public/og.png"), "x");
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  const out = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
     cwd: root,
     site: { title: "Wild Race" },
@@ -209,7 +209,7 @@ test("snapshotOgIdentity stamps banner from public/x-banner.jpg", () => {
 
 test("emits x:game:image for a public host when site.banner is set", () => {
   const html = "<html><head><meta property=\"x:game:image\" content=\"old\"></head></html>";
-  const out = injectHamadinePwaHead(html, {
+  const out = injectPwaHead(html, {
     host: "wild-race.hamadine.me",
     site: { title: "Wild Race", type: "x:game", card: "custom", banner: "/x-banner.jpg" },
   });
@@ -224,11 +224,11 @@ test("emits x:game:image for a public host when site.banner is set", () => {
 });
 
 test("does not emit x:game:image without a public host or banner", () => {
-  const noHost = injectHamadinePwaHead("<html><head></head></html>", {
+  const noHost = injectPwaHead("<html><head></head></html>", {
     site: { banner: "/x-banner.jpg" },
   });
   assert.doesNotMatch(noHost, /x:game:image/);
-  const noBanner = injectHamadinePwaHead("<html><head></head></html>", {
+  const noBanner = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
     site: { type: "x:game", card: "custom" },
   });
@@ -236,7 +236,7 @@ test("does not emit x:game:image without a public host or banner", () => {
 });
 
 test("site title Hamadine App is a real name, not a sentinel", () => {
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  const out = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
     site: { title: "Hamadine App" },
   });
@@ -244,7 +244,7 @@ test("site title Hamadine App is a real name, not a sentinel", () => {
 });
 
 test("published hamadine.me slug is still a title fallback", () => {
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  const out = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
   });
   assert.match(out, /property="og:title" content="Wild Race"/);
@@ -261,7 +261,7 @@ test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () =>
   const prev = process.env.VITE_PUBLIC_HOSTNAME;
   process.env.VITE_PUBLIC_HOSTNAME = "plum-plaza-reef-dream.hamadine.me";
   try {
-    const vercelHost = injectHamadinePwaHead("<html><head><title>RACK</title></head></html>", {
+    const vercelHost = injectPwaHead("<html><head><title>RACK</title></head></html>", {
       host: "01a020b6-803a-71a2-bb47-e2bec57eb9a2-662k8x1l1-xai-org.vercel.app",
       site: { title: "RACK", card: "custom" },
     });
@@ -271,7 +271,7 @@ test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () =>
     );
     assert.doesNotMatch(vercelHost, /vercel\.app/);
 
-    const otherPublicHost = injectHamadinePwaHead("<html><head><title>RACK</title></head></html>", {
+    const otherPublicHost = injectPwaHead("<html><head><title>RACK</title></head></html>", {
       host: "custom.example.com",
       site: { title: "RACK", card: "custom" },
     });
@@ -290,7 +290,7 @@ test("vercel Host without a public hostname emits no og:image", () => {
   const prev = process.env.VITE_PUBLIC_HOSTNAME;
   delete process.env.VITE_PUBLIC_HOSTNAME;
   try {
-    const out = injectHamadinePwaHead("<html><head><title>RACK</title></head></html>", {
+    const out = injectPwaHead("<html><head><title>RACK</title></head></html>", {
       host: "01a020b6-803a-71a2-bb47-e2bec57eb9a2-662k8x1l1-xai-org.vercel.app",
       site: { title: "RACK", card: "custom" },
     });
@@ -303,7 +303,7 @@ test("vercel Host without a public hostname emits no og:image", () => {
 });
 
 test("emits og:image for a public host and prefers a custom card", () => {
-  const placeholder = injectHamadinePwaHead("<html><head></head></html>", {
+  const placeholder = injectPwaHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.hamadine.me",
     site: { title: "Wild Race" },
@@ -314,7 +314,7 @@ test("emits og:image for a public host and prefers a custom card", () => {
   );
   assert.match(placeholder, /property="og:image:width" content="1200"/);
 
-  const custom = injectHamadinePwaHead("<html><head></head></html>", {
+  const custom = injectPwaHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.hamadine.me",
     site: { title: "Wild Race", card: "custom", type: "x:game" },
@@ -324,7 +324,7 @@ test("emits og:image for a public host and prefers a custom card", () => {
 });
 
 test("placeholder og:image appends site.color when it is 6-digit hex", () => {
-  const themed = injectHamadinePwaHead("<html><head></head></html>", {
+  const themed = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
     site: { title: "Wild Race", color: "#FF4D2E" },
   });
@@ -333,13 +333,13 @@ test("placeholder og:image appends site.color when it is 6-digit hex", () => {
     /property="og:image" content="https:\/\/og\.hamadine\.me\/v1\/card\.png\?host=wild-race\.hamadine\.me&amp;title=Wild%20Race&amp;color=FF4D2E"/,
   );
 
-  const invalid = injectHamadinePwaHead("<html><head></head></html>", {
+  const invalid = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
     site: { title: "Wild Race", color: "red" },
   });
   assert.doesNotMatch(invalid, /color=/);
 
-  const custom = injectHamadinePwaHead("<html><head></head></html>", {
+  const custom = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
     site: { title: "Wild Race", card: "custom", color: "FF4D2E" },
   });
@@ -347,7 +347,7 @@ test("placeholder og:image appends site.color when it is 6-digit hex", () => {
 });
 
 test("document title entities are not double-escaped on og:title", () => {
-  const out = injectHamadinePwaHead(
+  const out = injectPwaHead(
     "<html><head><title>Cats &amp; Dogs</title></head></html>",
   );
   assert.match(out, /property="og:title" content="Cats &amp; Dogs"/);
@@ -355,7 +355,7 @@ test("document title entities are not double-escaped on og:title", () => {
 });
 
 test("site.json title wins over the host slug", () => {
-  const out = injectHamadinePwaHead("<html><head></head></html>", {
+  const out = injectPwaHead("<html><head></head></html>", {
     host: "wild-race.hamadine.me",
     site: { title: "Pixel Nova" },
   });
@@ -363,7 +363,7 @@ test("site.json title wins over the host slug", () => {
 });
 
 test("injects into documents with no head element", () => {
-  const out = injectHamadinePwaHead("<html><body>hi</body></html>", { appName: "Solo" });
+  const out = injectPwaHead("<html><body>hi</body></html>", { appName: "Solo" });
   assert.match(out, /<head>/);
   assert.match(out, /property="og:title" content="Solo"/);
   assert.match(out, /<\/head>/);
@@ -382,20 +382,20 @@ test("streaming injector matches </HEAD> case-insensitively", () => {
 
 test("does not duplicate the extensions script", () => {
   const ctx = { appName: "Demo", projectId: "proj-123" };
-  const once = injectHamadinePwaHead("<html><head></head></html>", ctx);
-  const twice = injectHamadinePwaHead(once, ctx);
+  const once = injectPwaHead("<html><head></head></html>", ctx);
+  const twice = injectPwaHead(once, ctx);
   assert.equal(once, twice);
   assert.equal(twice.split("extensions.js").length - 1, 1);
 });
 
 test("is idempotent", () => {
-  const once = injectHamadinePwaHead("<html><head></head></html>");
-  const twice = injectHamadinePwaHead(once);
+  const once = injectPwaHead("<html><head></head></html>");
+  const twice = injectPwaHead(once);
   assert.equal(once, twice);
 });
 
 test("uses the app name in the injected title tag", () => {
-  const out = injectHamadinePwaHead("<html><head></head></html>", { appName: "Wild Race" });
+  const out = injectPwaHead("<html><head></head></html>", { appName: "Wild Race" });
   assert.match(out, /apple-mobile-web-app-title" content="Wild Race"/);
 });
 
@@ -486,13 +486,13 @@ test("renders the manifest with the per-app name", () => {
 test("vite config keeps the nitro serverDir wiring", () => {
   const viteConfig = readFileSync(join(TEMPLATE_ROOT, "vite.config.ts"), "utf8");
   assert.match(viteConfig, /serverDir:\s*"\.\/server"/);
-  assert.match(viteConfig, /hamadinePwaPlugin\(\)/);
+  assert.match(viteConfig, /pwaPlugin\(\)/);
 });
 
 test("nitro middleware and its bundled assets exist", () => {
   const middleware = readFileSync(join(TEMPLATE_ROOT, "server/middleware/hamadine-pwa.ts"), "utf8");
   assert.match(middleware, /install-page\.html\?raw/);
-  assert.match(middleware, /virtual:hamadine-og-identity/);
+  assert.match(middleware, /virtual:og-identity/);
   readFileSync(join(TEMPLATE_ROOT, "scripts/install-page.html"));
   readFileSync(join(TEMPLATE_ROOT, "public/__hamadine/icon-180.png"));
   readFileSync(join(TEMPLATE_ROOT, "public/__hamadine/install/styles.css"));
@@ -500,7 +500,7 @@ test("nitro middleware and its bundled assets exist", () => {
 
 test("vite plugin bakes og identity as a virtual module", () => {
   const plugin = readFileSync(join(TEMPLATE_ROOT, "scripts/hamadine-pwa-plugin.mjs"), "utf8");
-  assert.match(plugin, /virtual:hamadine-og-identity/);
+  assert.match(plugin, /virtual:og-identity/);
   assert.match(plugin, /snapshotOgIdentity/);
 });
 

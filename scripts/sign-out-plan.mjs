@@ -123,6 +123,24 @@ export async function runSignOut({
 }
 
 /**
+ * Ask the server to revoke every OTHER active session for the current user,
+ * keeping this one alive. Purely server-side — nothing local to clear and no
+ * redirect — so unlike `runSignOut` there is no preview/deployed asymmetry:
+ * either the server confirms within the timeout or it didn't, in both
+ * environments. Resolves to the outcome instead of throwing; a failed or
+ * timed-out revoke leaves the visitor exactly as signed in as before, so the
+ * caller decides how to surface it (e.g. a retryable error message).
+ * @param {object} steps
+ * @param {() => unknown} steps.requestRevoke Ask the server to revoke other sessions; must reject on a failed response.
+ * @param {boolean} steps.livePreview
+ * @param {number} [steps.timeoutMs]
+ * @returns {Promise<"ok" | "failed" | "timeout">}
+ */
+export async function runRevokeOtherSessions({ requestRevoke, livePreview, timeoutMs }) {
+  return settleWithin(requestRevoke, timeoutMs ?? signOutTimeoutMs(livePreview));
+}
+
+/**
  * @typedef {object} PreSignInSteps
  * @property {boolean} livePreview Whether the app is the sandbox preview iframe.
  * @property {boolean} hasBearer Whether a preview bearer token is stored.

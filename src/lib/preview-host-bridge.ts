@@ -77,7 +77,7 @@ export function installPreviewHostBridge(
   );
   if (parentOrigin === null) return () => {};
 
-  const ROOT_STATE_KEY = "__hamadinePreviewBridgeRoot";
+  const ROOT_STATE_KEY = "__previewBridgeRoot";
   const originalPushState = window.history.pushState.bind(window.history);
   const originalReplaceState = window.history.replaceState.bind(window.history);
 

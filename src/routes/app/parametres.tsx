@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/select";
 import { saveProfile } from "@/lib/server/workspace";
 import { isUnauthorized, useRefreshWorkspace, useWorkspace } from "@/lib/use-workspace";
 import { RedirectToSignIn } from "@/lib/auth/gates";
+import { revokeOtherSessions } from "@/lib/auth/client";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 
 export const Route = createFileRoute("/app/parametres")({ component: SettingsPage });
@@ -69,6 +70,29 @@ function SettingsPage() {
         ) : null}
         <Button type="submit">Enregistrer</Button>
       </form>
+      <section className="flex flex-col gap-3 rounded-xl bg-surface p-5 shadow-[var(--shadow-border)]">
+        <div>
+          <h2 className="font-medium">Sécurité</h2>
+          <p className="mt-1 text-sm text-muted">
+            Déconnectez tous vos autres appareils si vous pensez qu’un accès n’est plus légitime.
+            Cette session reste active.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={async () => {
+            const outcome = await revokeOtherSessions();
+            if (outcome === "ok") {
+              toast.success("Tous les autres appareils ont été déconnectés");
+            } else {
+              toast.error("Impossible de déconnecter les autres appareils — réessayez");
+            }
+          }}
+        >
+          Déconnecter mes autres appareils
+        </Button>
+      </section>
       <p className="text-xs leading-relaxed text-subtle">
         Chiffrement au repos, journal d’accès et revue des permissions API sont prévus en durcissement
         Phase 2 — hors périmètre de cette démo, mais le modèle de données isole déjà chaque compte.
